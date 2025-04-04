@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_KRAFT_MODE: "true"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "PLAINTEXT_HOST"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      CLUSTER_ID: "Nk018hRAQFytWskYqtQduw"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 209715200
+    networks:
+      - app-network
+  
+  preprocess_video:
+    build:
+      context: ../scripts
+      dockerfile: Dockerfile.spark
+    volumes:
+      - ../videos:/opt/airflow/videos/cameras
+      - /home/amine-8kkh/Desktop/amine/VS_project/fil_rouge_2/output:/opt/output/preprocessed 
+    depends_on:
+      - kafka 
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    external: true
+    name : app-network
