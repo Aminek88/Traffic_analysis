@@ -1,5 +1,4 @@
-pyspark==3.5.1
 kafka-python==2.0.2
+pyspark==3.5.1
 opencv-python==4.9.0.80
-pandas==2.2.2
-numpy==1.26.4
+ultralytics==8.3.0
