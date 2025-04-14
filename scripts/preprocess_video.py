@@ -9,7 +9,7 @@ import time
 import datetime
 import json
 import logging
-import cv2  # Ajout explicite de cv2
+import cv2  
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -17,31 +17,32 @@ logger = logging.getLogger(__name__)
 
 def preprocess_videos():
     logger.info("Chargement manuel de /opt/airflow/scripts/yolo11n.pt")
-    yolo_model = YOLO("yolo11n.pt")  # Chemin dans Airflow
+    yolo_model = YOLO("yolo11n.pt")
     class_names = yolo_model.names
 
     # Initialisation Spark
     spark = SparkSession.builder \
         .appName("TrafficDataProcessor") \
         .master("spark://spark-master:7077") \
-        .config("spark.jars", "/opt/spark/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar,/opt/spark/jars/kafka-clients-2.8.0.jar") \
-        .config("spark.driver.extraClassPath", "/opt/spark/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar:/opt/spark/jars/kafka-clients-2.8.0.jar") \
-        .config("spark.executor.extraClassPath", "/opt/bitnami/spark/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar:/opt/bitnami/spark/jars/kafka-clients-2.8.0.jar") \
+        .config("spark.jars", "/opt/airflow/jars/spark-sql-kafka-0-10_2.12-3.4.0.jar,/opt/airflow/jars/kafka-clients-3.4.0.jar") \
+        .config("spark.driver.extraClassPath", "/opt/airflow/jars/spark-sql-kafka-0-10_2.12-3.4.0.jar:/opt/airflow/jars/kafka-clients-3.4.0.jar") \
+        .config("spark.executor.extraClassPath", "/opt/bitnami/spark/jars/spark-sql-kafka-0-10_2.12-3.4.0.jar:/opt/bitnami/spark/jars/kafka-clients-3.4.0.jar") \
         .config("spark.submit.deployMode", "client") \
+        .config("spark.driver.host", "airflow") \
+        .config("spark.driver.memory", "2g") \
+        .config("spark.executor.memory", "2g") \
         .getOrCreate()
+
+    # Ajouter ce log pour vérifier le classpath
+    logger.info(f"Classpath du driver: {spark.sparkContext._conf.get('spark.driver.extraClassPath')}")
+    logger.info(f"Classpath de l'exécuteur: {spark.sparkContext._conf.get('spark.executor.extraClassPath')}")
+    logger.info(f"JARs configurés: {spark.sparkContext._conf.get('spark.jars')}")
+
     try:
         spark._jvm.org.apache.spark.sql.kafka010.KafkaSourceProvider
         logger.info("KafkaSourceProvider chargé avec succès.")
     except Exception as e:
         logger.error(f"Erreur lors du chargement de KafkaSourceProvider : {str(e)}")
-        raise
-
-# Test KafkaConfigUpdater
-    try:
-        spark._jvm.org.apache.spark.sql.kafka010.KafkaConfigUpdater
-        logger.info("KafkaConfigUpdater chargé avec succès.")
-    except Exception as e:
-        logger.error(f"Erreur lors du chargement de KafkaConfigUpdater : {str(e)}")
         raise
 
     # Schéma Kafka (métadonnées des vidéos)
@@ -131,11 +132,17 @@ def preprocess_videos():
         return pd.DataFrame(all_frames)
 
     # Lecture batch depuis Kafka
+    logger.info("Tentative de lecture depuis Kafka : kafka:9092, topics camera1_data, camera2_data")
     data_batch = spark.read.format("kafka") \
         .option("kafka.bootstrap.servers", "kafka:9092") \
         .option("subscribe", "camera1_data,camera2_data") \
         .option("startingOffsets", "earliest") \
         .load()
+    
+    logger.info("Schéma du DataFrame Kafka :")
+    data_batch.printSchema()
+    logger.info("Affichage d'un échantillon des données Kafka :")
+    data_batch.show(5, truncate=False)
 
     # Parse les métadonnées
     parsed_data = data_batch.select(
@@ -143,6 +150,9 @@ def preprocess_videos():
     ).select(
         "data.video_path", "data.period", "data.camera", "data.date"
     ).filter(col("data.status") == "ready_for_processing").distinct()
+
+    logger.info("Schéma du DataFrame parsé :")
+    parsed_data.printSchema()
 
     # Traitement des vidéos
     output_dir = "/opt/airflow/output/preprocessed"  # Chemin dans Airflow
