@@ -1,0 +1,25 @@
+FROM apache/airflow:2.9.0
+
+USER root
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    openjdk-17-jre-headless \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+
+COPY ./jars/spark-sql-kafka-0-10_2.12-3.5.1.jar /opt/airflow/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar
+# COPY ./jars/kafka-clients-2.8.0.jar /opt/airflow/jars/kafka-clients-2.8.0.jar
+COPY ./jars/kafka-clients-3.4.1.jar /opt/airflow/jars/kafka-clients-3.4.1.jar
+# COPY ./jars/spark-sql-kafka-0-10_2.12-3.4.0.jar /opt/airflow/jars/spark-sql-kafka-0-10_2.12-3.4.0.jar
+
+USER airflow
+RUN pip install --no-cache-dir six
+RUN pip install --no-cache-dir \
+    kafka-python \
+    pyspark==3.5.1 \
+    opencv-python==4.9.0.80 \
+    ultralytics==8.3.0 \
+    pandas==2.2.2

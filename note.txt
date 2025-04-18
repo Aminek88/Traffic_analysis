@@ -1,0 +1,12 @@
+1,Supprimer tous les conteneurs (en cours ou arrêtés) : 
+docker rm -f $(docker ps -aq)
+2. Supprimer toutes les images :
+docker rmi -f $(docker images -aq)
+3. Supprimer tous les volumes :
+docker volume rm $(docker volume ls -q)
+4. Nettoyer tout, y compris les volumes :
+docker system prune -a --volumes
+5.stockage occupe : 
+docker system df
+
+

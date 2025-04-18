@@ -1,8 +1,24 @@
 version: '3.8'
+
 services:
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+    networks:
+      - app-network
+
   kafka:
     image: confluentinc/cp-kafka:latest
-    hostname: kafka
     container_name: kafka
     ports:
       - "9092:9092"
@@ -21,20 +37,70 @@ services:
       KAFKA_SOCKET_REQUEST_MAX_BYTES: 209715200
     networks:
       - app-network
-  
-  preprocess_video:
+
+  spark-master:
     build:
-      context: ../scripts
+      context: .
       dockerfile: Dockerfile.spark
+    container_name: spark-master
+    ports:
+      - "8081:8081"
+      - "7077:7077"
+    environment:
+      - SPARK_MODE=master
     volumes:
-      - ../videos:/opt/airflow/videos/cameras
-      - /home/amine-8kkh/Desktop/amine/VS_project/fil_rouge_2/output:/opt/output/preprocessed 
+      - ../scripts:/opt/bitnami/spark/scripts
+      - ./output:/opt/bitnami/spark/output
+      - /home/amine-8kkh/Desktop/amine/VS_project/fil_rouge_2/videos:/opt/bitnami/spark/videos
+    networks:
+      - app-network
+
+  spark-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER=spark://spark-master:7077
     depends_on:
-      - kafka 
+      - spark-master
+    volumes:
+      - ../scripts:/opt/bitnami/spark/scripts
+      - ./output:/opt/bitnami/spark/output
+      - /home/amine-8kkh/Desktop/amine/VS_project/fil_rouge_2/videos:/opt/bitnami/spark/videos
+    networks:
+      - app-network
+
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: airflow
+    user : "50000:0"
+    depends_on:
+      - postgres
+      - kafka
+      - spark-master
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ../scripts:/opt/airflow/scripts
+      - ./output:/opt/airflow/output:rw
+      - /home/amine-8kkh/Desktop/amine/VS_project/fil_rouge_2/videos:/opt/airflow/videos
+      - ./entrypoint.sh:/entrypoint.sh
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+    command: bash /entrypoint.sh
     networks:
       - app-network
 
 networks:
   app-network:
-    external: true
-    name : app-network
+    driver: bridge
+
+volumes:
+  postgres_data:
