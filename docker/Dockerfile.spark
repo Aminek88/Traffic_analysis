@@ -7,11 +7,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copie le JAR Kafka
-# COPY ./jars/spark-sql-kafka-0-10_2.12-3.5.1.jar /opt/bitnami/spark/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar
+COPY ./jars/spark-sql-kafka-0-10_2.12-3.5.1.jar /opt/bitnami/spark/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar
 
 # COPY ./jars/kafka-clients-2.8.0.jar /opt/bitnami/spark/jars/kafka-clients-2.8.0.jar
-COPY ./jars/kafka-clients-3.4.0.jar /opt/bitnami/spark/jars/kafka-clients-3.4.0.jar
-COPY ./jars/spark-sql-kafka-0-10_2.12-3.4.0.jar /opt/bitnami/spark/jars/spark-sql-kafka-0-10_2.12-3.4.0.jar
+COPY ./jars/kafka-clients-3.4.1.jar /opt/bitnami/spark/jars/kafka-clients-3.4.1.jar
+# COPY ./jars/spark-sql-kafka-0-10_2.12-3.4.0.jar /opt/bitnami/spark/jars/spark-sql-kafka-0-10_2.12-3.4.0.jar
+
+
 
 # Dépendances Python
 RUN pip install --no-cache-dir \

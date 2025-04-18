@@ -9,28 +9,32 @@ import time
 import datetime
 import json
 import logging
-import cv2  
+import cv2 
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def preprocess_videos():
-    logger.info("Chargement manuel de /opt/airflow/scripts/yolo11n.pt")
-    yolo_model = YOLO("yolo11n.pt")
+    # Chemin du modèle YOLO dans le conteneur
+    model_path = "/opt/airflow/scripts/yolov8n.pt"
+    
+    # Vérifier si le fichier modèle existe
+    if not os.path.exists(model_path):
+        logger.error(f"Le fichier modèle {model_path} n'existe pas dans le conteneur")
+        raise FileNotFoundError(f"Modèle YOLOv8 non trouvé à {model_path}")
+    
+    logger.info(f"Chargement du modèle YOLO depuis {model_path}")
+    yolo_model = YOLO(model_path)
     class_names = yolo_model.names
 
     # Initialisation Spark
     spark = SparkSession.builder \
-        .appName("TrafficDataProcessor") \
-        .master("spark://spark-master:7077") \
-        .config("spark.jars", "/opt/airflow/jars/spark-sql-kafka-0-10_2.12-3.4.0.jar,/opt/airflow/jars/kafka-clients-3.4.0.jar") \
-        .config("spark.driver.extraClassPath", "/opt/airflow/jars/spark-sql-kafka-0-10_2.12-3.4.0.jar:/opt/airflow/jars/kafka-clients-3.4.0.jar") \
-        .config("spark.executor.extraClassPath", "/opt/bitnami/spark/jars/spark-sql-kafka-0-10_2.12-3.4.0.jar:/opt/bitnami/spark/jars/kafka-clients-3.4.0.jar") \
-        .config("spark.submit.deployMode", "client") \
-        .config("spark.driver.host", "airflow") \
-        .config("spark.driver.memory", "2g") \
-        .config("spark.executor.memory", "2g") \
+        .appName("VideoProcessing") \
+        .config("spark.jars", "/opt/airflow/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar,/opt/airflow/jars/kafka-clients-3.4.1.jar") \
+        .config("spark.driver.extraClassPath", "/opt/airflow/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar:/opt/airflow/jars/kafka-clients-3.4.1.jar") \
+        .config("spark.executor.extraClassPath", "/opt/bitnami/spark/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar:/opt/bitnami/spark/jars/kafka-clients-3.4.1.jar") \
+        .config("spark.sql.streaming.kafka.useDeprecatedOffsetFetching", "true") \
         .getOrCreate()
 
     # Ajouter ce log pour vérifier le classpath
@@ -92,6 +96,9 @@ def preprocess_videos():
             ret, frame = cap.read()
             if not ret:
                 break
+            
+            ## Affichage de num frame
+            logger.info(f"Traitement de la frame {frame_count} pour la vidéo {video_path}")
 
             elapsed_time = time.time() - start_time
             timestamp = datetime.datetime.now().isoformat()

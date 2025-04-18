@@ -10,10 +10,10 @@ RUN apt-get update && apt-get install -y \
 
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
-#COPY ./jars/spark-sql-kafka-0-10_2.12-3.5.1.jar /opt/airflow/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar
+COPY ./jars/spark-sql-kafka-0-10_2.12-3.5.1.jar /opt/airflow/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar
 # COPY ./jars/kafka-clients-2.8.0.jar /opt/airflow/jars/kafka-clients-2.8.0.jar
-COPY ./jars/kafka-clients-3.4.0.jar /opt/airflow/jars/kafka-clients-3.4.0.jar
-COPY ./jars/spark-sql-kafka-0-10_2.12-3.4.0.jar /opt/bitnami/spark/jars/spark-sql-kafka-0-10_2.12-3.4.0.jar
+COPY ./jars/kafka-clients-3.4.1.jar /opt/airflow/jars/kafka-clients-3.4.1.jar
+# COPY ./jars/spark-sql-kafka-0-10_2.12-3.4.0.jar /opt/airflow/jars/spark-sql-kafka-0-10_2.12-3.4.0.jar
 
 USER airflow
 RUN pip install --no-cache-dir six
